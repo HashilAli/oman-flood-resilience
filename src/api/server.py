@@ -131,7 +131,8 @@ def get_data_sources():
     return {
         "sources": get_sources(),
         "presets": OMAN_PRESETS,
-        "cesium_ion_available": bool(settings.cesium_ion_token)
+        "cesium_ion_available": bool(settings.cesium_ion_token),
+        "cesium_ion_token": settings.cesium_ion_token or ""
     }
 
 

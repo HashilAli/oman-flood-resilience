@@ -191,6 +191,16 @@
                     <h2 class="section-title">طبقات العرض والتحليل الجغرافي</h2>
                 </div>
 
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label" for="basemapSelect">خريطة الأساس (Base Imagery):</label>
+                    <select id="basemapSelect" class="form-select">
+                        <option value="satellite" selected>🛰️ قمر صناعي (ArcGIS World Imagery)</option>
+                        <option value="osm">🗺️ خريطة الشوارع (OpenStreetMap)</option>
+                        <option value="topo">⛰️ خريطة طبوغرافية (ArcGIS Topo)</option>
+                        <option value="dark">🌙 خريطة داكنة متباينة (CartoDB Dark)</option>
+                    </select>
+                </div>
+
                 <div class="layer-item">
                     <label class="toggle-control">
                         <input type="checkbox" id="layerTerrain" checked>
@@ -391,7 +401,7 @@
 <!-- CesiumJS Library -->
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
 <!-- Application Script -->
-<script src="app.js"></script>
+<script src="app.js?v=2.1.0"></script>
 
 </body>
 </html>

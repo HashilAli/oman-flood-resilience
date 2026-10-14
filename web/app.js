@@ -19,6 +19,7 @@ const state = {
     playTimer: null,
     playSpeedMs: 900,
     // Cesium Layer References
+    baseImageryLayer: null,
     floodImageryLayer: null,
     hazardImageryLayer: null,
     osmWaterwaysDataSource: null,
@@ -26,44 +27,100 @@ const state = {
     osmBuildingsDataSource: null,
     vectorDataSource: null,
     clickPinEntity: null,
-    presets: {}
+    presets: {},
+    cesiumIonToken: null
 };
 
 // -----------------------------------------------------------------------------
 // 1. Initialize CesiumJS 3D Globe
 // -----------------------------------------------------------------------------
+function createBasemapProvider(type) {
+    if (type === "osm") {
+        return new Cesium.UrlTemplateImageryProvider({
+            url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            subdomains: ["a", "b", "c"],
+            maximumLevel: 19,
+            credit: "© OpenStreetMap contributors"
+        });
+    } else if (type === "topo") {
+        return new Cesium.UrlTemplateImageryProvider({
+            url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+            maximumLevel: 19,
+            credit: "Esri World Topographic"
+        });
+    } else if (type === "dark") {
+        return new Cesium.UrlTemplateImageryProvider({
+            url: "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+            credit: "CartoDB Dark Matter"
+        });
+    }
+    // Default: ArcGIS World Imagery (Satellite) - Key Free, Global, Fast
+    return new Cesium.UrlTemplateImageryProvider({
+        url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        maximumLevel: 19,
+        credit: "Esri, Maxar, Earthstar Geographics"
+    });
+}
+
 async function initCesium() {
-    // Check if Cesium token available from sources API
+    let ionToken = null;
     try {
         const resp = await fetch("/api/sources");
         const data = await resp.json();
         state.presets = data.presets || {};
+        if (data.cesium_ion_token) {
+            ionToken = data.cesium_ion_token;
+            state.cesiumIonToken = ionToken;
+            Cesium.Ion.defaultAccessToken = ionToken;
+        }
     } catch (e) {
         console.warn("Could not fetch presets catalog:", e);
     }
 
-    // Configure Cesium Viewer
+    // Default base satellite imagery layer
+    const defaultBasemap = createBasemapProvider("satellite");
+    const baseLayer = new Cesium.ImageryLayer(defaultBasemap);
+
+    // Prepare terrain provider safely (use ellipsoid by default to avoid 401 Ion errors)
+    let terrainProvider;
+    if (ionToken && ionToken.length > 20) {
+        try {
+            terrainProvider = await Cesium.createWorldTerrainAsync({
+                requestWaterMask: true,
+                requestVertexNormals: true
+            });
+        } catch (e) {
+            console.warn("Could not load WorldTerrain, fallback to ellipsoid:", e);
+            terrainProvider = new Cesium.EllipsoidTerrainProvider();
+        }
+    } else {
+        terrainProvider = new Cesium.EllipsoidTerrainProvider();
+    }
+
+    // Configure Cesium Viewer with explicit baseLayer to disable Cesium Ion default imagery lookups
     state.viewer = new Cesium.Viewer("cesiumContainer", {
         animation: false,
         timeline: false,
-        baseLayerPicker: true,
+        baseLayerPicker: false,
+        baseLayer: baseLayer,
         geocoder: false,
         homeButton: false,
         sceneModePicker: false,
         navigationHelpButton: false,
         infoBox: false,
         selectionIndicator: false,
-        terrainProvider: await Cesium.createWorldTerrainAsync({
-            requestWaterMask: true,
-            requestVertexNormals: true
-        }).catch(() => new Cesium.EllipsoidTerrainProvider())
+        terrainProvider: terrainProvider
     });
 
-    state.viewer.scene.globe.depthTestAgainstTerrain = true;
+    state.baseImageryLayer = baseLayer;
+    state.viewer.scene.globe.depthTestAgainstTerrain = false;
     state.viewer.scene.globe.enableLighting = false;
 
     // Fly to initial Oman location (Wadi Adai, Muscat)
-    flyToLocation(58.54, 23.58, 14000, -45);
+    state.viewer.camera.flyTo({
+        destination: Cesium.Rectangle.fromDegrees(58.50, 23.53, 58.59, 23.62),
+        duration: 2.0
+    });
 
     // Setup Click Handler for Point Inspection
     const handler = new Cesium.ScreenSpaceEventHandler(state.viewer.scene.canvas);
@@ -76,6 +133,17 @@ async function initCesium() {
 
     // Prepare default domain
     prepareDomain("wadi_adai");
+}
+
+function setBasemap(type) {
+    if (!state.viewer) return;
+    const provider = createBasemapProvider(type);
+    if (state.baseImageryLayer) {
+        state.viewer.imageryLayers.remove(state.baseImageryLayer, true);
+        state.baseImageryLayer = null;
+    }
+    // Add as bottom-most layer (index 0)
+    state.baseImageryLayer = state.viewer.imageryLayers.addImageryProvider(provider, 0);
 }
 
 function flyToLocation(lon, lat, height = 15000, pitchDeg = -45) {
@@ -125,11 +193,12 @@ async function prepareDomain(presetId = null, customBbox = null) {
         statusEl.innerText = `تم تجهيز التضاريس بنجاح (${data.validation.cells.toLocaleString()} خلية، دقة ${data.validation.cell_size_m}م)`;
         statusEl.style.color = "#10b981";
 
-        // Zoom 3D camera to domain
+        // Zoom 3D camera to domain bounding rectangle
         const [w, s, e, n] = state.domainBounds;
-        const cLon = (w + e) / 2.0;
-        const cLat = (s + n) / 2.0;
-        flyToLocation(cLon, cLat, 12000, -50);
+        state.viewer.camera.flyTo({
+            destination: Cesium.Rectangle.fromDegrees(w, s, e, n),
+            duration: 2.0
+        });
 
         // Fetch and render real OSM vector layers
         loadOsmVectors(data.domain_id);
@@ -578,6 +647,42 @@ function setupEventListeners() {
         }
     });
 
+    // Basemap selector
+    const basemapSelect = document.getElementById("basemapSelect");
+    if (basemapSelect) {
+        basemapSelect.addEventListener("change", (e) => {
+            setBasemap(e.target.value);
+        });
+    }
+
+    // Terrain toggle
+    const layerTerrain = document.getElementById("layerTerrain");
+    if (layerTerrain) {
+        layerTerrain.addEventListener("change", async (e) => {
+            if (e.target.checked) {
+                if (state.cesiumIonToken && state.cesiumIonToken.length > 20) {
+                    try {
+                        const terrain = await Cesium.createWorldTerrainAsync({
+                            requestWaterMask: true,
+                            requestVertexNormals: true
+                        });
+                        state.viewer.terrainProvider = terrain;
+                        state.viewer.scene.globe.depthTestAgainstTerrain = true;
+                    } catch (err) {
+                        console.warn("Could not load world terrain:", err);
+                    }
+                } else {
+                    const statusEl = document.getElementById("domainStatus");
+                    statusEl.innerText = "تنبيه: التضاريس ثلاثية الأبعاد الدقيقة مدمجة في حسابات المحاكاة الهيدروليكية (Copernicus DEM). لتجسيمها عالمياً على CesiumJS يمكن تزويد CESIUM_ION_TOKEN في الإعدادات.";
+                    statusEl.style.color = "#fbbf24";
+                }
+            } else {
+                state.viewer.terrainProvider = new Cesium.EllipsoidTerrainProvider();
+                state.viewer.scene.globe.depthTestAgainstTerrain = false;
+            }
+        });
+    }
+
     // Layers Toggles
     document.getElementById("layerWaterways").addEventListener("change", (e) => {
         if (state.osmWaterwaysDataSource) state.osmWaterwaysDataSource.show = e.target.checked;
@@ -603,7 +708,18 @@ function setupEventListeners() {
         state.viewer.camera.zoomOut(1500);
     });
     document.getElementById("btnResetView").addEventListener("click", () => {
-        flyToLocation(state.domainCenter[0], state.domainCenter[1], 12000, -50);
+        if (state.domainBounds) {
+            const [w, s, e, n] = state.domainBounds;
+            state.viewer.camera.flyTo({
+                destination: Cesium.Rectangle.fromDegrees(w, s, e, n),
+                duration: 1.5
+            });
+        } else {
+            state.viewer.camera.flyTo({
+                destination: Cesium.Rectangle.fromDegrees(58.50, 23.53, 58.59, 23.62),
+                duration: 1.5
+            });
+        }
     });
     document.getElementById("btn3DTilt").addEventListener("click", () => {
         const curPitch = state.viewer.camera.pitch;
