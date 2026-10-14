@@ -1,0 +1,20 @@
+{
+  "crs": "EPSG:32640",
+  "bbox_lonlat": [
+    58.5,
+    23.54,
+    58.58,
+    23.62
+  ],
+  "source": {
+    "source_id": "copernicus_glo30",
+    "source_file": "D:\\AI4SGs\\data\\cache\\dem\\cop30_2b87dae1993ff876.tif",
+    "native_resolution": "0.0002777777777777778 deg",
+    "native_crs": "EPSG:4326",
+    "target_crs": "EPSG:32640",
+    "resolution_m": 30.0,
+    "resampling": "bilinear",
+    "void_fraction_before_fill": 0.0,
+    "void_fraction_after_fill": 0.0
+  }
+}

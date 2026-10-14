@@ -1,0 +1,85 @@
+{
+  "engine": "local_inertial",
+  "status": "completed",
+  "elapsed_wall_seconds": 38.02,
+  "simulated_duration_hours": 1.0,
+  "total_steps": 1084,
+  "cell_size_m": 30.0,
+  "grid_rows": 299,
+  "grid_cols": 276,
+  "total_cells": 82524,
+  "total_rain_excess_volume_m3": 6056871.7,
+  "total_boundary_outflow_m3": 622393.3,
+  "total_sea_sink_volume_m3": 0.0,
+  "final_water_stored_m3": 5434478.4,
+  "mass_balance_error_pct": 0.0,
+  "peak_depth_overall_m": 12.955,
+  "peak_speed_overall_m_s": 38.266,
+  "total_snapshots": 5,
+  "snapshots": [
+    {
+      "time_seconds": 0.0,
+      "time_hours": 0.0,
+      "flooded_area_km2": 0.0,
+      "total_water_volume_m3": 0.0,
+      "peak_depth_m": 0.0,
+      "mean_wet_depth_m": 0.0
+    },
+    {
+      "time_seconds": 900.0,
+      "time_hours": 0.25,
+      "flooded_area_km2": 0.0,
+      "total_water_volume_m3": 0.0,
+      "peak_depth_m": 0.0,
+      "mean_wet_depth_m": 0.0
+    },
+    {
+      "time_seconds": 1800.0,
+      "time_hours": 0.5,
+      "flooded_area_km2": 32.0454,
+      "total_water_volume_m3": 2099004.2,
+      "peak_depth_m": 4.155,
+      "mean_wet_depth_m": 0.064
+    },
+    {
+      "time_seconds": 2700.0,
+      "time_hours": 0.75,
+      "flooded_area_km2": 34.6572,
+      "total_water_volume_m3": 5328951.9,
+      "peak_depth_m": 11.49,
+      "mean_wet_depth_m": 0.152
+    },
+    {
+      "time_seconds": 3600.0,
+      "time_hours": 1.0,
+      "flooded_area_km2": 16.1901,
+      "total_water_volume_m3": 5434478.4,
+      "peak_depth_m": 12.955,
+      "mean_wet_depth_m": 0.332
+    }
+  ],
+  "domain_id": "wadi_adai",
+  "extra_meta": {
+    "domain_id": "wadi_adai",
+    "rainfall_total_mm": 120.0,
+    "rainfall_duration_hours": 1.0,
+    "rainfall_distribution": "scs_type2",
+    "loss_model_type": "scs_cn",
+    "curve_number": 86.0,
+    "manning_n": 0.04,
+    "simulation_hours": 1.0,
+    "output_interval_minutes": 15.0
+  },
+  "dem_meta": {
+    "crs": "EPSG:32640",
+    "bbox_lonlat": [
+      58.5,
+      23.54,
+      58.58,
+      23.62
+    ],
+    "rows": 299,
+    "cols": 276,
+    "cell_size_m": 30.0
+  }
+}

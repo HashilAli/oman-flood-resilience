@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "issues": [],
+  "warnings": [],
+  "rows": 299,
+  "cols": 276,
+  "cells": 82524,
+  "cell_size_m": 30.0,
+  "area_km2": 74.272,
+  "crs": "EPSG:32640",
+  "elevation_min_m": 5.1,
+  "elevation_max_m": 572.59,
+  "elevation_mean_m": 132.65,
+  "slope_median_pct": 25.56,
+  "flat_fraction": 0.0001,
+  "sea_fraction": 0.0,
+  "void_fraction": 0.0
+}

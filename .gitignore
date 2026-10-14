@@ -3,10 +3,16 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
-# Downloaded geodata caches and simulation outputs (large, reproducible)
-data/cache/
-data/runs/
-data/domains/
+# Ignore extra caches and runs, but track default reference dataset for cloud deployment
+data/cache/*
+!data/cache/osm/
+!data/cache/osm/**
+data/domains/*
+!data/domains/wadi_adai/
+!data/domains/wadi_adai/**
+data/runs/*
+!data/runs/run_wadi_adai_1791998073/
+!data/runs/run_wadi_adai_1791998073/**
 # Local secrets / settings
 config/settings.toml
 config/settings.yaml

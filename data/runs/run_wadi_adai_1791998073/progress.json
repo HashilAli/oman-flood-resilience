@@ -1,0 +1,1 @@
+{"current_time_seconds": 3536.8, "total_time_seconds": 3600.0, "percentage": 98.2, "current_dt": 1.866, "current_max_depth_m": 12.933, "current_water_volume_m3": 5449555.9, "mass_balance_error_pct": 0.0, "status": "running", "message": "Simulating time T+0.98h (dt=1.87s, steps=1050)", "job_id": "run_wadi_adai_1791998073", "domain_id": "wadi_adai"}
