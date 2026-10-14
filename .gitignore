@@ -11,3 +11,5 @@ data/domains/
 config/settings.toml
 config/settings.yaml
 .env
+scratch/
+
