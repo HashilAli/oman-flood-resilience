@@ -201,10 +201,28 @@ async function prepareDomain(presetId = null, customBbox = null) {
         });
 
         // Fetch and render real OSM vector layers
-        loadOsmVectors(data.domain_id);
+        await loadOsmVectors(data.domain_id);
+
+        // Auto-load completed simulation run if one exists
+        await autoLoadLatestRun(data.domain_id);
     } catch (e) {
         statusEl.innerText = `خطأ: ${e.message}`;
         statusEl.style.color = "#ef4444";
+    }
+}
+
+async function autoLoadLatestRun(domainId) {
+    try {
+        const resp = await fetch("/api/runs");
+        if (!resp.ok) return;
+        const runs = await resp.json();
+        const run = runs.find(r => r.domain_id === domainId && r.status === "completed");
+        if (run) {
+            console.log(`Auto-loading run ${run.run_id} for ${domainId}`);
+            await loadRunResults(run.run_id);
+        }
+    } catch (e) {
+        console.warn("Could not auto-load run:", e);
     }
 }
 
@@ -323,12 +341,26 @@ async function pollSimulationProgress(jobId) {
 
         if (data.status === "completed") {
             clearInterval(state.pollInterval);
+            state.pollInterval = null;
+            state.activeJobId = null;
             state.currentRunId = jobId;
             resetSimButtons();
-            document.getElementById("simProgressContainer").style.display = "none";
-            loadRunResults(jobId);
+
+            const pStatus = document.getElementById("progressStatusText");
+            if (pStatus) {
+                pStatus.innerText = "✅ اكتملت المحاكاة الفيزيائية بنجاح! تم عرض ذروة الفيضان مباشرة.";
+                pStatus.style.color = "#10b981";
+            }
+            setTimeout(() => {
+                const progBox = document.getElementById("simProgressContainer");
+                if (progBox) progBox.style.display = "none";
+            }, 3500);
+
+            await loadRunResults(jobId);
         } else if (data.status === "failed" || data.status === "cancelled") {
             clearInterval(state.pollInterval);
+            state.pollInterval = null;
+            state.activeJobId = null;
             resetSimButtons();
             alert(`توقفت المحاكاة: ${data.message || data.status}`);
         }
@@ -351,6 +383,9 @@ async function cancelCurrentJob() {
 // 4. Results Visualization & Synchronous Time Slider
 // -----------------------------------------------------------------------------
 async function loadRunResults(runId) {
+    if (!runId) return;
+    state.currentRunId = runId;
+
     const resp = await fetch(`/api/runs/${runId}/summary`);
     if (!resp.ok) return;
     state.runSummary = await resp.json();
@@ -359,8 +394,19 @@ async function loadRunResults(runId) {
     const slider = document.getElementById("timeSlider");
     slider.min = 0;
     slider.max = Math.max(0, snapshots.length - 1);
-    slider.value = 0;
-    state.currentFrameIndex = 0;
+
+    // Identify peak flood frame so user sees water immediately!
+    let peakFrameIdx = 0;
+    let maxArea = -1;
+    snapshots.forEach((s, idx) => {
+        if (s.flooded_area_km2 > maxArea) {
+            maxArea = s.flooded_area_km2;
+            peakFrameIdx = idx;
+        }
+    });
+
+    slider.value = peakFrameIdx;
+    state.currentFrameIndex = peakFrameIdx;
 
     // Render time ticks
     const ticksContainer = document.getElementById("timeTicksContainer");
@@ -369,8 +415,8 @@ async function loadRunResults(runId) {
         ticksContainer.innerHTML = `<span>T+0h</span><span>T+${(state.runSummary.simulated_duration_hours / 2).toFixed(1)}h</span><span>T+${state.runSummary.simulated_duration_hours}h</span>`;
     }
 
-    // Display frame 0
-    updateTimeFrame(0);
+    // Display peak frame immediately so water inundation is obvious
+    updateTimeFrame(peakFrameIdx);
 
     // Assess roads and buildings impacts
     loadImpactAssessments(runId);
@@ -384,6 +430,12 @@ function updateTimeFrame(frameIndex) {
     state.currentFrameIndex = frameIndex;
     const snap = snapshots[frameIndex];
 
+    // Sync slider position if not already matching
+    const slider = document.getElementById("timeSlider");
+    if (slider && parseInt(slider.value) !== frameIndex) {
+        slider.value = frameIndex;
+    }
+
     // Update Header Labels & KPIs
     document.getElementById("currentHorizonLabel").innerText = `T+${snap.time_hours.toFixed(2)}h`;
     document.getElementById("currentTimeFormatted").innerText = `${(snap.time_hours * 60).toFixed(0)} دقيقة من بداية العاصفة`;
@@ -392,22 +444,24 @@ function updateTimeFrame(frameIndex) {
     document.getElementById("kpiMaxDepth").innerText = `${snap.peak_depth_m.toFixed(2)} م`;
 
     // Swap Cesium Imagery Layer (Georeferenced PNG)
-    const [w, s, e, n] = state.domainBounds;
-    const rect = Cesium.Rectangle.fromDegrees(w, s, e, n);
+    if (state.domainBounds && state.currentRunId) {
+        const [w, s, e, n] = state.domainBounds;
+        const rect = Cesium.Rectangle.fromDegrees(w, s, e, n);
 
-    if (state.floodImageryLayer) {
-        state.viewer.imageryLayers.remove(state.floodImageryLayer);
-        state.floodImageryLayer = null;
-    }
+        if (state.floodImageryLayer) {
+            state.viewer.imageryLayers.remove(state.floodImageryLayer);
+            state.floodImageryLayer = null;
+        }
 
-    if (document.getElementById("layerFlood").checked) {
-        const imageUrl = `/api/runs/${state.currentRunId}/layers/depth/${frameIndex}.png?t=${Date.now()}`;
-        const provider = new Cesium.SingleTileImageryProvider({
-            url: imageUrl,
-            rectangle: rect
-        });
-        state.floodImageryLayer = state.viewer.imageryLayers.addImageryProvider(provider);
-        state.floodImageryLayer.alpha = 0.82;
+        if (document.getElementById("layerFlood").checked) {
+            const imageUrl = `/api/runs/${state.currentRunId}/layers/depth/${frameIndex}.png?t=${Date.now()}`;
+            const provider = new Cesium.SingleTileImageryProvider({
+                url: imageUrl,
+                rectangle: rect
+            });
+            state.floodImageryLayer = state.viewer.imageryLayers.addImageryProvider(provider);
+            state.floodImageryLayer.alpha = 0.85;
+        }
     }
 
     // Update Vectors if enabled

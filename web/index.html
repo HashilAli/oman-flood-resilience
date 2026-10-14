@@ -130,8 +130,10 @@
                     <div class="form-group">
                         <label class="form-label" for="durationSelect">مدة العاصفة:</label>
                         <select id="durationSelect" class="form-select">
-                            <option value="3">3 ساعات</option>
-                            <option value="6" selected>6 ساعات</option>
+                            <option value="1">1 ساعة (محاكاة سريعة ~10ث)</option>
+                            <option value="2">ساعتان (محاكاة سريعة ~20ث)</option>
+                            <option value="3" selected>3 ساعات (محاكاة قياسية ~30ث)</option>
+                            <option value="6">6 ساعات (عاصفة كاملة ~60ث)</option>
                             <option value="12">12 ساعة</option>
                             <option value="24">24 ساعة</option>
                         </select>
@@ -401,7 +403,7 @@
 <!-- CesiumJS Library -->
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
 <!-- Application Script -->
-<script src="app.js?v=2.1.0"></script>
+<script src="app.js?v=2.2.0"></script>
 
 </body>
 </html>
