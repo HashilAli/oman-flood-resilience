@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+# Downloaded geodata caches and simulation outputs (large, reproducible)
+data/cache/
+data/runs/
+# Local secrets / settings
+config/settings.yaml
+.env
