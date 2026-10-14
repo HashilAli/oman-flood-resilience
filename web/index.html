@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة راصد عُمان: المحاكاة الهيدروليكية ثلاثية الأبعاد (3D Flood Resilience)</title>
+    
+    <!-- Google Fonts: Cairo & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- CesiumJS CSS -->
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app-container">
+    <!-- Top Command Center Header -->
+    <header class="top-nav">
+        <div class="nav-brand">
+            <div class="logo-mark">🌊</div>
+            <div>
+                <h1 class="nav-title">منصة راصد عُمان: محاكاة فيضانات الأودية 3D</h1>
+                <p class="nav-subtitle">محاكاة هيدروديناميكية فيزيائية ثلاثية الأبعاد على التضاريس الحقيقية لسلطنة عُمان</p>
+            </div>
+        </div>
+        
+        <!-- Live Run KPIs -->
+        <div class="header-kpis" id="headerKpis">
+            <div class="kpi-chip">
+                <span class="kpi-chip-label">مساحة الغمر</span>
+                <span class="kpi-chip-val" id="kpiFloodedArea">-- كم²</span>
+            </div>
+            <div class="kpi-chip danger">
+                <span class="kpi-chip-label">أقصى عمق</span>
+                <span class="kpi-chip-val" id="kpiMaxDepth">-- م</span>
+            </div>
+            <div class="kpi-chip warning">
+                <span class="kpi-chip-label">انقطاع الطرق</span>
+                <span class="kpi-chip-val" id="kpiRoadSeverance">-- %</span>
+            </div>
+            <div class="kpi-chip">
+                <span class="kpi-chip-label">المباني المتأثرة</span>
+                <span class="kpi-chip-val" id="kpiBuildingsAffected">--</span>
+            </div>
+        </div>
+
+        <div class="nav-actions">
+            <button class="btn btn-secondary btn-sm" id="btnOpenMetadata" title="عرض مصادر البيانات ومحددات الدقة">
+                ℹ️ مصادر البيانات
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btnOpenCompare" title="مقارنة سيناريوهين">
+                📊 مقارنة سيناريوهات
+            </button>
+            <button class="btn btn-primary btn-sm" id="btnExportMenu" title="تصدير النتائج">
+                📥 تصدير GeoTIFF
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <span class="section-icon">📍</span>
+                    <h2 class="section-title">حوض الوادي ومنطقة الدراسة</h2>
+                </div>
+                
+                <label class="form-label" for="presetSelect">اختر الحوض المائي:</label>
+                <select id="presetSelect" class="form-select">
+                    <option value="wadi_adai">حوض وادي عدي - محافظة مسقط</option>
+                    <option value="wadi_shab">حوض وادي شاب وقلهات - محافظة جنوب الشرقية</option>
+                    <option value="wadi_ahan">حوض وادي عاهن وصحم - محافظة شمال الباطنة</option>
+                    <option value="wadi_darbat">حوض وادي دربات وطاقة - محافظة ظفار</option>
+                    <option value="custom">إدخال إحداثيات مخصصة (Custom BBox)...</option>
+                </select>
+
+                <div id="customBboxGroup" class="custom-bbox-fields" style="display: none;">
+                    <div class="form-grid-2">
+                        <div>
+                            <label class="form-label">غرب (Lon W):</label>
+                            <input type="number" step="0.01" id="bboxWest" class="form-input" value="58.50">
+                        </div>
+                        <div>
+                            <label class="form-label">جنوب (Lat S):</label>
+                            <input type="number" step="0.01" id="bboxSouth" class="form-input" value="23.54">
+                        </div>
+                        <div>
+                            <label class="form-label">شرق (Lon E):</label>
+                            <input type="number" step="0.01" id="bboxEast" class="form-input" value="58.58">
+                        </div>
+                        <div>
+                            <label class="form-label">شمال (Lat N):</label>
+                            <input type="number" step="0.01" id="bboxNorth" class="form-input" value="23.62">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preset-info-card" id="presetInfoCard">
+                    <div class="preset-gov" id="presetGov">محافظة مسقط</div>
+                    <div class="preset-desc" id="presetDesc">حوض جبلي حضري ذو استجابة سريعة للسيول.</div>
+                </div>
+
+                <button class="btn btn-accent btn-block" id="btnPrepareDomain">
+                    ⛰️ تحميل تضاريس Copernicus DEM الحقيقية
+                </button>
+                <div id="domainStatus" class="status-msg"></div>
+            </div>
+
+            <!-- Hydrological Scenario Parameters -->
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <span class="section-icon">🌧️</span>
+                    <h2 class="section-title">إعداد السيناريو الهيدرولوجي</h2>
+                </div>
+
+                <div class="form-group">
+                    <div class="label-with-val">
+                        <label class="form-label" for="rainInput">معدل الأمطار التراكمي:</label>
+                        <span class="slider-badge" id="rainVal">120 ملم</span>
+                    </div>
+                    <input type="range" id="rainInput" min="20" max="300" step="10" value="120" class="form-range">
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label" for="durationSelect">مدة العاصفة:</label>
+                        <select id="durationSelect" class="form-select">
+                            <option value="3">3 ساعات</option>
+                            <option value="6" selected>6 ساعات</option>
+                            <option value="12">12 ساعة</option>
+                            <option value="24">24 ساعة</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="distSelect">توزيع الهطول:</label>
+                        <select id="distSelect" class="form-select">
+                            <option value="scs_type2" selected>SCS Type II (عواصف رعدية)</option>
+                            <option value="uniform">منتظم (Uniform)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <div class="label-with-val">
+                            <label class="form-label">نفاذية التربة (CN):</label>
+                            <span class="slider-badge" id="cnVal">86</span>
+                        </div>
+                        <input type="range" id="cnInput" min="60" max="98" step="1" value="86" class="form-range">
+                    </div>
+                    <div class="form-group">
+                        <div class="label-with-val">
+                            <label class="form-label">خشونة مانينغ (n):</label>
+                            <span class="slider-badge" id="manningVal">0.040</span>
+                        </div>
+                        <input type="range" id="manningInput" min="0.020" max="0.080" step="0.005" value="0.040" class="form-range">
+                    </div>
+                </div>
+
+                <div class="simulation-actions">
+                    <button class="btn btn-primary btn-block btn-lg" id="btnRunSimulation">
+                        🚀 تشغيل المحاكاة الفيزيائية (2D Solver)
+                    </button>
+                    <button class="btn btn-danger btn-block btn-sm" id="btnCancelSimulation" style="display: none;">
+                        ⏹️ إلغاء المحاكاة
+                    </button>
+                </div>
+
+                <!-- Simulation Progress Box -->
+                <div id="simProgressContainer" class="progress-box" style="display: none;">
+                    <div class="progress-header">
+                        <span id="progressStatusText">جاري الحساب...</span>
+                        <span id="progressPctText">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                    </div>
+                    <div class="progress-details" id="progressDetailsText">الخطوة الزمنية dt = 0.5s</div>
+                </div>
+            </div>
+
+            <!-- Map Layers & Analysis Toggles -->
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <span class="section-icon">🗺️</span>
+                    <h2 class="section-title">طبقات العرض والتحليل الجغرافي</h2>
+                </div>
+
+                <div class="layer-item">
+                    <label class="toggle-control">
+                        <input type="checkbox" id="layerTerrain" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">⛰️ التضاريس ثلاثية الأبعاد (3D Elevation)</span>
+                    </label>
+                </div>
+
+                <div class="layer-item">
+                    <label class="toggle-control">
+                        <input type="checkbox" id="layerFlood" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">🌊 انتشار مياه الفيضان مع الزمن (Time-lapse)</span>
+                    </label>
+                </div>
+
+                <div class="layer-item">
+                    <label class="toggle-control">
+                        <input type="checkbox" id="layerHazard">
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">⚠️ خارطة المخاطر المائية (العمق × السرعة)</span>
+                    </label>
+                </div>
+
+                <div class="layer-item">
+                    <label class="toggle-control">
+                        <input type="checkbox" id="layerWaterways" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">🏞️ مجاري الأودية الطبيعية (OSM Waterways)</span>
+                    </label>
+                </div>
+
+                <div class="layer-item">
+                    <label class="toggle-control">
+                        <input type="checkbox" id="layerRoads" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">🛣️ شبكة الطرق وحالة الانقطاع (OSM Roads)</span>
+                    </label>
+                </div>
+
+                <div class="layer-item">
+                    <label class="toggle-control">
+                        <input type="checkbox" id="layerBuildings" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">🏢 المباني والمنشآت المعرضة للغمر (OSM Buildings)</span>
+                    </label>
+                </div>
+
+                <div class="layer-item">
+                    <label class="toggle-control">
+                        <input type="checkbox" id="layerVectors">
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-label">↗️ أسهم متجهات سرعة واتجاه التدفق</span>
+                    </label>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 3D Cesium Map Container -->
+        <main class="map-area">
+            <div id="cesiumContainer"></div>
+
+            <!-- Floating 3D Navigation Controls -->
+            <div class="map-floating-controls">
+                <button class="icon-btn" id="btnZoomIn" title="تكبير">+</button>
+                <button class="icon-btn" id="btnZoomOut" title="تصغير">−</button>
+                <button class="icon-btn" id="btnResetView" title="إعادة ضبط الرؤية">🧭</button>
+                <button class="icon-btn" id="btn3DTilt" title="تبديل زاوية الرؤية 3D/2D">📐</button>
+            </div>
+
+            <!-- Bottom Time Slider Bar -->
+            <div class="time-control-bar" id="timeControlBar">
+                <div class="time-actions">
+                    <button class="btn-play" id="btnPlayPause" title="تشغيل / إيقاف العرض الزمني">▶</button>
+                    <button class="btn-step" id="btnStepPrev" title="الخطوة السابقة">⏮</button>
+                    <button class="btn-step" id="btnStepNext" title="الخطوة التالية">⏭</button>
+                </div>
+
+                <div class="time-slider-wrapper">
+                    <div class="time-label-top">
+                        <span>الأفق الزمني الحالي: <b id="currentHorizonLabel" class="text-cyan">T+0.00h</b></span>
+                        <span id="currentTimeFormatted">0 دقيقة من بداية العاصفة</span>
+                    </div>
+                    <input type="range" id="timeSlider" min="0" max="0" step="1" value="0" class="time-range">
+                    <div class="time-ticks" id="timeTicksContainer"></div>
+                </div>
+
+                <div class="speed-control">
+                    <label>السرعة:</label>
+                    <select id="playSpeedSelect" class="form-select-sm">
+                        <option value="1500">0.5x</option>
+                        <option value="900" selected>1.0x</option>
+                        <option value="400">2.0x</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Flood Depth Color Legend -->
+            <div class="color-legend-card" id="colorLegendCard">
+                <div class="legend-title">مفتاح ألوان عمق المياه (Water Depth)</div>
+                <div class="legend-gradient-bar"></div>
+                <div class="legend-labels">
+                    <span>0.05م</span>
+                    <span>0.30م</span>
+                    <span>0.75م</span>
+                    <span>1.50م</span>
+                    <span>3.0م+</span>
+                </div>
+                <div class="legend-subtext">
+                    <span class="legend-dot" style="background:#48cae4"></span> غمر سطحي
+                    <span class="legend-dot" style="background:#0096c7"></span> حرج للمركبات
+                    <span class="legend-dot" style="background:#023e8a"></span> جارف
+                    <span class="legend-dot" style="background:#3a0ca3"></span> خطر داهم
+                </div>
+            </div>
+
+            <!-- Point Click Inspector Modal / Floating Box -->
+            <div class="point-inspector-card" id="pointInspectorCard" style="display: none;">
+                <div class="inspector-header">
+                    <h4>📍 بيانات نقطة الاستعلام</h4>
+                    <button class="btn-close" id="btnCloseInspector">&times;</button>
+                </div>
+                <div class="inspector-grid">
+                    <div class="inspect-item">
+                        <span class="inspect-label">الإحداثيات:</span>
+                        <span class="inspect-val" id="inspCoords">--</span>
+                    </div>
+                    <div class="inspect-item">
+                        <span class="inspect-label">ارتفاع الأرض (DEM):</span>
+                        <span class="inspect-val" id="inspElev">-- م</span>
+                    </div>
+                    <div class="inspect-item">
+                        <span class="inspect-label">أقصى عمق مياه:</span>
+                        <span class="inspect-val text-cyan" id="inspDepth">-- م</span>
+                    </div>
+                    <div class="inspect-item">
+                        <span class="inspect-label">سرعة الجريان:</span>
+                        <span class="inspect-val" id="inspSpeed">-- م/ث</span>
+                    </div>
+                    <div class="inspect-item">
+                        <span class="inspect-label">زمن وصول السيل:</span>
+                        <span class="inspect-val" id="inspArrival">-- ساعة</span>
+                    </div>
+                    <div class="inspect-item">
+                        <span class="inspect-label">تصنيف الخطر:</span>
+                        <span class="inspect-val" id="inspHazard">--</span>
+                    </div>
+                </div>
+
+                <div class="inspector-chart-box">
+                    <div class="inspect-label">منحنى هيدروغراف العمق مع الزمن:</div>
+                    <canvas id="pointHydrographCanvas" width="280" height="90"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Metadata & Provenance Modal -->
+<div class="modal-backdrop" id="metadataModal" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>📋 بطاقة البيانات الوصفية ومصادر ومحددات النموذج</h3>
+            <button class="btn-close" id="btnCloseMetadata">&times;</button>
+        </div>
+        <div class="modal-body" id="metadataModalContent">
+            <!-- Populated via API -->
+        </div>
+    </div>
+</div>
+
+<!-- Scenario Comparison Modal -->
+<div class="modal-backdrop" id="compareModal" style="display: none;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+            <h3>📊 مقارنة مخرجات سيناريوهين</h3>
+            <button class="btn-close" id="btnCloseCompare">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid-2">
+                <div>
+                    <label class="form-label">السيناريو أ (Run A):</label>
+                    <select id="compareRunA" class="form-select"></select>
+                </div>
+                <div>
+                    <label class="form-label">السيناريو ب (Run B):</label>
+                    <select id="compareRunB" class="form-select"></select>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-block" id="btnExecuteCompare" style="margin-top: 14px;">
+                مقارنة الفروق المكانية والهيدرولوجية
+            </button>
+            <div id="compareResultsBox" style="margin-top: 16px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- CesiumJS Library -->
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
+<!-- Application Script -->
+<script src="app.js"></script>
+
+</body>
+</html>

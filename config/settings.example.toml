@@ -1,0 +1,33 @@
+# Example settings for the flood simulation platform.
+# Copy to config/settings.toml (git-ignored) and edit. Every key is optional;
+# missing keys fall back to the defaults shown here.
+# Secrets (e.g. a Cesium ion token) must NOT be written here — use environment
+# variables (see README "الإعدادات").
+
+[paths]
+# Root folder for caches, prepared domains and simulation runs (relative to project root)
+data_dir = "data"
+
+[domain]
+# Default computational cell size in metres (Copernicus GLO-30 native ≈ 30 m)
+default_resolution_m = 30.0
+# Hard limit on computational cells per run to protect memory/CPU.
+# 250k cells at 30 m ≈ 225 km². Coarsen the resolution for larger areas.
+max_cells = 250000
+
+[engine]
+# Default engine: "local_inertial" (built-in) or "hecras" (requires a HEC-RAS install + prepared project)
+default = "local_inertial"
+# Parallel background simulation workers
+workers = 1
+
+[services]
+# Public, key-free services. Respect their usage policies (see docs/DATA_SOURCES.md).
+copernicus_dem_base_url = "https://copernicus-dem-30m.s3.amazonaws.com"
+overpass_url = "https://overpass-api.de/api/interpreter"
+nominatim_url = "https://nominatim.openstreetmap.org/search"
+user_agent = "AI4SGs-FloodSim/2.0 (research prototype)"
+
+[hecras]
+# Optional explicit path to Ras.exe (auto-detected in standard install folders if empty)
+ras_exe = ""

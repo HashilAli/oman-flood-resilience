@@ -6,6 +6,8 @@ venv/
 # Downloaded geodata caches and simulation outputs (large, reproducible)
 data/cache/
 data/runs/
+data/domains/
 # Local secrets / settings
+config/settings.toml
 config/settings.yaml
 .env

@@ -394,11 +394,14 @@ st.markdown(f"""
                 المنطقة النشطة: <b style="color: #00f0ff;">{current_reg['name_ar']}</b> | 
                 مسار رسم خرائط المياه - مسابقة <b>AI4SDGs 2026</b> بشراكة <b>عدسة عُمان (Oman Lens)</b> و <b>Star.Vision Aerospace</b>
             </p>
+            <div style="margin-top: 8px; font-size: 12px; color: #fbbf24; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 4px 10px; display: inline-block;">
+                ⚠️ <b>تنبيه علمي:</b> هذه الواجهة تستعرض بيانات محاكاة تجريبية (Synthetic Demo). لتشغيل التضاريس الحقيقية (Copernicus DEM) والواجهة ثلاثية الأبعاد (3D Cesium)، استخدم المنظومة الجديدة عبر الرابط: <a href="http://localhost:8000" target="_blank" style="color: #00f0ff; font-weight: bold;">http://localhost:8000</a>
+            </div>
         </div>
         <div style="margin-top: 10px; text-align: left;">
-            <span class="badge badge-cyan">🛰️ SAR Edge-AI</span>
+            <span class="badge badge-gold">⚠️ نموذج أولي تجريبي</span>
+            <span class="badge badge-cyan">🌐 النسخة 3D متوفرة على 8000</span>
             <span class="badge badge-emerald">SDG 11: مدن مستدامة</span>
-            <span class="badge badge-gold">SDG 13: العمل المناخي</span>
             <span class="badge" style="color: #e2e8f0;">رؤية عُمان 2040</span>
         </div>
     </div>
